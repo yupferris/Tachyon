@@ -72,7 +72,12 @@ let a = atom ""
 let b =
     a
     |> filter (String.IsNullOrEmpty >> not)
-    |> foldp (fun x y -> y + " " + x) ""
+    |> foldp
+        (fun x y ->
+            if String.IsNullOrEmpty x then y
+            else if String.IsNullOrEmpty y then x
+            else y + " " + x) ""
+let c = map (printfn "%A") b
 
 Array.iter (fun x -> a.swap (fun _ -> x) |> ignore) ("these are some words".Split(' '))
 b.get()
