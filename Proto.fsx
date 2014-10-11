@@ -72,6 +72,7 @@ let a = atom ""
 let b =
     a
     |> filter (String.IsNullOrEmpty >> not)
+    |> choose (fun x -> if not (List.exists ((=) x) ["duck"; "horse"]) then Some x else None)
     |> foldp
         (fun x y ->
             if String.IsNullOrEmpty x then y
@@ -79,5 +80,5 @@ let b =
             else y + " " + x) ""
 let c = map (printfn "%A") b
 
-Array.iter (fun x -> a.swap (fun _ -> x) |> ignore) ("these are some words".Split(' '))
+Array.iter (fun x -> a.swap (fun _ -> x) |> ignore) ("these duck are some horse words".Split(' '))
 b.get()
