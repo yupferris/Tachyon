@@ -48,4 +48,5 @@ let map<'a, 'b when 'a : not struct and 'b : not struct> f (a : Atom<'a, _>) =
 
 let a = atom "hasn't updated yet"
 let b = map (fun (x : string) -> sprintf "the length of the last value was %d" x.Length) a
+a.swap (fun _ -> "123")
 b.get()
