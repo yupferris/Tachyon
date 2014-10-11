@@ -43,14 +43,25 @@ let map<'a, 'b when 'a : not struct and 'b : not struct> (f : 'a -> 'b) (a : Ato
     a.addWatch (fun _ x -> ret.swap(fun _ -> f x) |> ignore) |> ignore
     ret
 
-let filter f = map (fun x -> if f x then x else Unchecked.defaultof<_>)
+let filter<'a when 'a : not struct> (f : 'a -> bool) (a : Atom<'a>) =
+    let seed = a.get()
+    let ret = atom(if f seed then seed else Unchecked.defaultof<_>)
+    a.addWatch (fun _ x -> if f x then ret.swap(fun _ -> x) |> ignore) |> ignore
+    ret
 
-let choose f =
-    map
-        (fun x ->
-            match f x with
+let choose<'a, 'b when 'a : not struct and 'b : not struct> (f : 'a -> 'b option) (a : Atom<'a>) =
+    let seed = a.get()
+    let ret =
+        atom(
+            match f seed with
             | Some x -> x
             | _ -> Unchecked.defaultof<_>)
+    a.addWatch
+        (fun _ x ->
+            match f x with
+            | Some x -> ret.swap(fun _ -> x) |> ignore
+            | _ -> ()) |> ignore
+    ret
 
 let foldp<'a, 'b when 'a : not struct and 'b : not struct> (f : 'a -> 'b -> 'b) (b : 'b) (a : Atom<'a>) =
     let ret = atom(f (a.get()) b)
@@ -58,7 +69,10 @@ let foldp<'a, 'b when 'a : not struct and 'b : not struct> (f : 'a -> 'b -> 'b) 
     ret
 
 let a = atom ""
-let b = foldp (fun x y -> y + " " + x) "" a
+let b =
+    a
+    |> filter (String.IsNullOrEmpty >> not)
+    |> foldp (fun x y -> y + " " + x) ""
 
 Array.iter (fun x -> a.swap (fun _ -> x) |> ignore) ("these are some words".Split(' '))
 b.get()
