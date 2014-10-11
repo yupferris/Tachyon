@@ -27,4 +27,4 @@
             compareAndSwap watches (fun w -> Map.remove key w) |> ignore
             x
 
-    let atom value = new Atom<_(*, _*)>(value)
+    let atom value = new Atom<_>(value)
