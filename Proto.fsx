@@ -7,7 +7,7 @@ type AtomicReference<'a when 'a : not struct> (value : 'a) =
     member x.get () = !r
     member x.compareAndSwap oldValue newValue =
         let result = Interlocked.CompareExchange<_>(r, newValue, oldValue)
-        Object.ReferenceEquals(result, oldValue)
+        obj.ReferenceEquals(result, oldValue)
     member x.swap f =
         let rec aux () =
             let oldValue = !r
@@ -16,9 +16,9 @@ type AtomicReference<'a when 'a : not struct> (value : 'a) =
             else aux()
         aux()
 
-type Atom<'a, 'b when 'a : not struct and 'b : comparison> (value : 'a) =
+type Atom<'a when 'a : not struct> (value : 'a) =
     let r = new AtomicReference<'a>(value)
-    let watches = new AtomicReference<Map<'b, 'a -> 'a -> unit>>(Map.empty)
+    let watches = new AtomicReference<('a -> 'a -> unit) list>([])
 
     member x.get = r.get
     member x.swap f =
@@ -26,24 +26,21 @@ type Atom<'a, 'b when 'a : not struct and 'b : comparison> (value : 'a) =
             let oldValue = r.get()
             let newValue = f oldValue
             if r.compareAndSwap oldValue newValue then
-                Map.iter (fun key watch -> watch oldValue newValue) (watches.get())
+                List.iter (fun watch -> watch oldValue newValue) (watches.get())
                 newValue
             else aux()
         aux()
 
     member x.getWatches = watches.get
-    member x.addWatch key watch =
-        watches.swap (fun w -> Map.add key watch w) |> ignore
-        x
-    member x.removeWatch key =
-        watches.swap (fun w -> Map.remove key w) |> ignore
+    member x.addWatch watch =
+        watches.swap (fun w -> watch :: w) |> ignore
         x
 
-let atom value = new Atom<_, int>(value)
+let atom value = new Atom<_>(value)
 
-let map<'a, 'b when 'a : not struct and 'b : not struct> f (a : Atom<'a, _>) =
+let map<'a, 'b when 'a : not struct and 'b : not struct> f (a : Atom<'a>) =
     let ret = atom(f (a.get()))
-    a.addWatch 0 (fun _ x -> ret.swap(fun _ -> f x) |> ignore) |> ignore
+    a.addWatch (fun _ x -> ret.swap(fun _ -> f x) |> ignore) |> ignore
     ret
 
 let a = atom "hasn't updated yet"
