@@ -38,7 +38,7 @@ type Atom<'a when 'a : not struct> (value : 'a) =
 
 let atom value = new Atom<_>(value)
 
-let map<'a, 'b when 'a : not struct and 'b : not struct> f (a : Atom<'a>) =
+let map<'a, 'b when 'a : not struct and 'b : not struct> (f : 'a -> 'b) (a : Atom<'a>) =
     let ret = atom(f (a.get()))
     a.addWatch (fun _ x -> ret.swap(fun _ -> f x) |> ignore) |> ignore
     ret
