@@ -2,20 +2,17 @@
     open Tachyon.IStream
     open Tachyon.Atom
 
-    type EventStream<'a>() =
-        let e = new Event<'a>()
+    let buildEventStream<'a, 'b> (a : IStream<'a>) f =
+        let e = new Event<'b>()
         let p = e.Publish
 
-        interface IStream<'a> with
-            member x.addWatch h = lock e (fun () -> p.AddHandler h)
-            member x.removeWatch h = lock e (fun () -> p.RemoveHandler h)
+        a.addWatch (new Handler<_>(fun _ x -> lock e (fun () -> f (e.Trigger) x)))
 
-        member x.trigger v = lock e (fun () -> e.Trigger v)
-
-    let buildEventStream<'a, 'b> (a : IStream<'a>) f =
-        let s = new EventStream<'b>()
-        a.addWatch (new Handler<_>(fun _ x -> f (s.trigger) x))
-        s :> IStream<_>
+        {
+            new IStream<'b> with
+                member x.addWatch h = lock e (fun () -> p.AddHandler h)
+                member x.removeWatch h = lock e (fun () -> p.RemoveHandler h)
+        }
 
     let map f a = buildEventStream a (fun t x -> t (f x))
 
