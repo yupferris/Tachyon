@@ -1,9 +1,6 @@
 ﻿module Tachyon.Stream
+    open Tachyon.IStream
     open Tachyon.Atom
-
-    type IStream<'a> =
-        abstract addWatch : Handler<'a> -> unit
-        abstract removeWatch : Handler<'a> -> unit
 
     type EventStream<'a>() =
         let e = new Event<'a>()
@@ -39,7 +36,7 @@
 
     let foldp f b a =
         let id = atom b
-        buildEventStream a (fun t x -> t (id.swap (fun _ -> f x (id.get()))))
+        buildEventStream a (fun t x -> t (id.swap (fun y -> f x y)))
 
     let subscribe f (a : IStream<_>) =
         a.addWatch (new Handler<_>(fun _ x -> f x))

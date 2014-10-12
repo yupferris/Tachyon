@@ -1,4 +1,6 @@
 ﻿module Tachyon.Atom
+    open Tachyon.IStream
+
     type Atom<'a>(value : 'a) =
         let r = ref value
 
@@ -13,7 +15,8 @@
             lock e (fun () -> e.Trigger newValue)
             newValue)
 
-        member x.addWatch h = lock e (fun () -> p.AddHandler h)
-        member x.removeWatch h = lock e (fun () -> p.RemoveHandler h)
+        interface IStream<'a> with
+            member x.addWatch h = lock e (fun () -> p.AddHandler h)
+            member x.removeWatch h = lock e (fun () -> p.RemoveHandler h)
 
     let atom value = new Atom<_>(value)
