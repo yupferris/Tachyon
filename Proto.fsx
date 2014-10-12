@@ -18,4 +18,7 @@ let b =
             else x + " " + y) ""
     |> subscribe (printfn "%A")
 
-Array.iter (fun x -> a.swap (fun _ -> x) |> ignore) ("these duck are some horse words".Split(' '))
+"these duck are some horse words".Split(' ')
+|> Array.map (fun x -> async { a.swap (fun _ -> x) |> ignore })
+|> Async.Parallel
+|> Async.RunSynchronously

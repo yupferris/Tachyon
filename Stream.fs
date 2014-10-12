@@ -20,7 +20,7 @@
                 member x.removeWatch h = lock e (fun () -> p.RemoveHandler h)
         }
 
-    let buildEventStream (a : IStream<'a>) f =
+    let buildEventStream<'a, 'b> (a : IStream<'a>) f =
         let s = new EventStream<'b>()
         a.addWatch (new Handler<_>(fun _ x -> f (s.trigger) x))
         s :> IStream<_>
@@ -38,6 +38,4 @@
         let id = atom b
         buildEventStream a (fun t x -> t (id.swap (fun y -> f y x)))
 
-    let subscribe f (a : IStream<_>) =
-        a.addWatch (new Handler<_>(fun _ x -> f x))
-        a
+    let subscribe f a = buildEventStream a (fun t x -> f x; t x)
