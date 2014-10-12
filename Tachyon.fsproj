@@ -50,6 +50,7 @@
     <Compile Include="Stream.fs" />
     <Compile Include="Program.fs" />
     <None Include="Proto.fsx" />
+    <None Include="Todo.fsx" />
     <None Include="App.config" />
   </ItemGroup>
   <PropertyGroup>

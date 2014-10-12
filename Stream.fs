@@ -6,12 +6,12 @@
         let e = new Event<'b>()
         let p = e.Publish
 
-        a.addWatch (new Handler<_>(fun _ x -> lock e (fun () -> f (e.Trigger) x)))
+        a.addWatch (new Handler<_>(fun _ x -> f (e.Trigger) x))
 
         {
             new IStream<'b> with
-                member x.addWatch h = lock e (fun () -> p.AddHandler h)
-                member x.removeWatch h = lock e (fun () -> p.RemoveHandler h)
+                member x.addWatch h = p.AddHandler h
+                member x.removeWatch h = p.RemoveHandler h
         }
 
     let map f a = buildEventStream a (fun t x -> t (f x))
