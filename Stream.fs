@@ -12,14 +12,6 @@
 
         member x.trigger v = lock e (fun () -> e.Trigger v)
 
-    let stream (e : Event<_>) =
-        let p = e.Publish
-        {
-            new IStream<'b> with
-                member x.addWatch h = lock e (fun () -> p.AddHandler h)
-                member x.removeWatch h = lock e (fun () -> p.RemoveHandler h)
-        }
-
     let buildEventStream<'a, 'b> (a : IStream<'a>) f =
         let s = new EventStream<'b>()
         a.addWatch (new Handler<_>(fun _ x -> f (s.trigger) x))
