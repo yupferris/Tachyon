@@ -34,9 +34,9 @@
         | Some x -> t x
         | _ -> ())
 
-    let foldp f b a =
+    let scan f b a =
         let id = atom b
-        buildEventStream a (fun t x -> t (id.swap (fun y -> f x y)))
+        buildEventStream a (fun t x -> t (id.swap (fun y -> f y x)))
 
     let subscribe f (a : IStream<_>) =
         a.addWatch (new Handler<_>(fun _ x -> f x))
