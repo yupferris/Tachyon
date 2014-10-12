@@ -8,12 +8,14 @@
         let p = e.Publish
 
         member x.get () = !r
-        member x.swap f = lock r (fun () ->
-            let oldValue = !r
-            let newValue = f oldValue
-            r := newValue
+        member x.swap f =
+            let newValue = lock r (fun () ->
+                let oldValue = !r
+                let newValue = f oldValue
+                r := newValue
+                newValue)
             lock e (fun () -> e.Trigger newValue)
-            newValue)
+            newValue
 
         interface IStream<'a> with
             member x.addWatch h = lock e (fun () -> p.AddHandler h)
