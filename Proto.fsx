@@ -6,7 +6,7 @@ open System
 open Tachyon.Atom
 open Tachyon.Stream
 
-let a = atom ""
+let a = atom "this is an initial value"
 let b =
     a
     |> filter (String.IsNullOrEmpty >> not)
