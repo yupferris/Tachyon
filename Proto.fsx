@@ -1,74 +1,72 @@
 ﻿open System
-open System.Threading
 
-type AtomicReference<'a when 'a : not struct> (value : 'a) =
-    let r = ref value
+type IStream<'a> =
+    abstract addWatch : Handler<'a> -> unit
+    abstract removeWatch : Handler<'a> -> unit
 
-    member x.get () = !r
-    member x.compareAndSwap oldValue newValue =
-        let result = Interlocked.CompareExchange<_>(r, newValue, oldValue)
-        obj.ReferenceEquals(result, oldValue)
-    member x.swap f =
-        let rec aux () =
-            let oldValue = !r
+type IIdentity<'a> =
+    inherit IStream<'a>
+
+    abstract get : unit -> 'a
+    abstract swap : ('a -> 'a) -> 'a
+
+type Identity<'a>(value : 'a) =
+    let v = ref value
+
+    let e = new Event<'a>()
+    let p = e.Publish
+
+    interface IIdentity<'a> with
+        member x.get () = !v
+        member x.swap f = lock v (fun () ->
+            let oldValue = !v
             let newValue = f oldValue
-            if x.compareAndSwap oldValue newValue then newValue
-            else aux()
-        aux()
+            v := newValue
+            e.Trigger newValue
+            newValue)
 
-type Atom<'a when 'a : not struct> (value : 'a) =
-    let r = new AtomicReference<'a>(value)
-    let watches = new AtomicReference<('a -> 'a -> unit) list>([])
+        member x.addWatch h = lock e (fun () -> p.AddHandler h)
+        member x.removeWatch h = lock e (fun () -> p.RemoveHandler h)
 
-    member x.get = r.get
-    member x.swap f =
-        let rec aux () =
-            let oldValue = r.get()
-            let newValue = f oldValue
-            if r.compareAndSwap oldValue newValue then
-                List.iter (fun watch -> watch oldValue newValue) (watches.get())
-                newValue
-            else aux()
-        aux()
+let stream (e : Event<_>) =
+    let p = e.Publish
+    {
+        new IStream<'b> with
+            member x.addWatch h = lock e (fun () -> p.AddHandler h)
+            member x.removeWatch h = lock e (fun () -> p.RemoveHandler h)
+    }
 
-    member x.getWatches = watches.get
-    member x.addWatch watch =
-        watches.swap (fun w -> watch :: w) |> ignore
-        x
+let identity x = new Identity<_>(x) :> IIdentity<_>
 
-let atom value = new Atom<_>(value)
+let map<'a, 'b> f (a : IStream<'a>) =
+    let e = new Event<'b>()
+    a.addWatch (new Handler<_>(fun _ x -> e.Trigger (f x)))
+    stream e
 
-let map<'a, 'b when 'a : not struct and 'b : not struct> (f : 'a -> 'b) (a : Atom<'a>) =
-    let ret = atom(f (a.get()))
-    a.addWatch (fun _ x -> ret.swap(fun _ -> f x) |> ignore) |> ignore
-    ret
+let filter f (a : IStream<_>) =
+    let e = new Event<_>()
+    a.addWatch (new Handler<_>(fun _ x -> if f x then e.Trigger x))
+    stream e
 
-let filter<'a when 'a : not struct> (f : 'a -> bool) (a : Atom<'a>) =
-    let seed = a.get()
-    let ret = atom(if f seed then seed else Unchecked.defaultof<_>)
-    a.addWatch (fun _ x -> if f x then ret.swap(fun _ -> x) |> ignore) |> ignore
-    ret
+let choose<'a, 'b> f (a : IStream<'a>) =
+    let e = new Event<'b>()
+    a.addWatch (new Handler<_>(fun _ x ->
+        match f x with
+        | Some x -> e.Trigger x
+        | _ -> ()))
+    stream e
 
-let choose<'a, 'b when 'a : not struct and 'b : not struct> (f : 'a -> 'b option) (a : Atom<'a>) =
-    let seed = a.get()
-    let ret =
-        atom(
-            match f seed with
-            | Some x -> x
-            | _ -> Unchecked.defaultof<_>)
-    a.addWatch
-        (fun _ x ->
-            match f x with
-            | Some x -> ret.swap(fun _ -> x) |> ignore
-            | _ -> ()) |> ignore
-    ret
+let foldp<'a, 'b> f b (a : IStream<'a>) =
+    let id = identity b
+    let e = new Event<'b>()
+    a.addWatch (new Handler<_>(fun _ x -> e.Trigger (id.swap (fun _ -> f x (id.get())))))
+    stream e
 
-let foldp<'a, 'b when 'a : not struct and 'b : not struct> (f : 'a -> 'b -> 'b) (b : 'b) (a : Atom<'a>) =
-    let ret = atom(f (a.get()) b)
-    a.addWatch (fun _ x -> ret.swap(fun p -> f x p) |> ignore) |> ignore
-    ret
+let subscribe f (a : IStream<_>) =
+    a.addWatch (new Handler<_>(fun _ x -> f x))
+    a
 
-let a = atom ""
+let a = identity ""
 let b =
     a
     |> filter (String.IsNullOrEmpty >> not)
@@ -78,7 +76,6 @@ let b =
             if String.IsNullOrEmpty x then y
             else if String.IsNullOrEmpty y then x
             else y + " " + x) ""
-let c = map (printfn "%A") b
+    |> subscribe (printfn "%A")
 
 Array.iter (fun x -> a.swap (fun _ -> x) |> ignore) ("these duck are some horse words".Split(' '))
-b.get()
