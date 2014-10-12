@@ -2,7 +2,7 @@
     open Tachyon.IStream
     open Tachyon.Atom
 
-    let buildEventStream (a : IStream<'a>) f =
+    let private buildEventStream (a : IStream<'a>) f =
         let e = new Event<'b>()
         let p = e.Publish
 
