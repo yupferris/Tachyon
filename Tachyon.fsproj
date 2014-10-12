@@ -46,8 +46,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Atom.fs" />
-    <Compile Include="Identity.fs" />
     <Compile Include="Stream.fs" />
+    <Compile Include="Identity.fs" />
     <Compile Include="Program.fs" />
     <None Include="Proto.fsx" />
     <None Include="App.config" />
